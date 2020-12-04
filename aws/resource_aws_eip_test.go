@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -683,13 +682,12 @@ func testAccCheckAWSEIPPrivateDNS(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("Not found: %s", resourceName)
 		}
 
-		privateIPDashed := strings.Replace(rs.Primary.Attributes["private_ip"], ".", "-", -1)
 		privateDNS := rs.Primary.Attributes["private_dns"]
-		expectedPrivateDNS := fmt.Sprintf("ip-%s.%s.compute.internal", privateIPDashed, testAccGetRegion())
-
-		if testAccGetRegion() == "us-east-1" {
-			expectedPrivateDNS = fmt.Sprintf("ip-%s.ec2.internal", privateIPDashed)
-		}
+		expectedPrivateDNS := fmt.Sprintf(
+			"ip-%s.%s",
+			resourceAwsEc2DashIP(rs.Primary.Attributes["private_ip"]),
+			resourceAwsEc2RegionalPrivateDnsSuffix(testAccGetRegion()),
+		)
 
 		if privateDNS != expectedPrivateDNS {
 			return fmt.Errorf("expected private_dns value (%s), received: %s", expectedPrivateDNS, privateDNS)
@@ -706,13 +704,12 @@ func testAccCheckAWSEIPPublicDNS(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("Not found: %s", resourceName)
 		}
 
-		publicIPDashed := strings.Replace(rs.Primary.Attributes["public_ip"], ".", "-", -1)
 		publicDNS := rs.Primary.Attributes["public_dns"]
-		expectedPublicDNS := fmt.Sprintf("ec2-%s.%s.compute.%s", publicIPDashed, testAccGetRegion(), testAccGetPartitionDNSSuffix())
-
-		if testAccGetRegion() == "us-east-1" {
-			expectedPublicDNS = fmt.Sprintf("ec2-%s.compute-1.%s", publicIPDashed, testAccGetPartitionDNSSuffix())
-		}
+		expectedPublicDNS := fmt.Sprintf(
+			"ec2-%s.%s",
+			resourceAwsEc2DashIP(rs.Primary.Attributes["public_ip"]),
+			resourceAwsEc2RegionalPublicDnsSuffix(testAccGetRegion()),
+		)
 
 		if publicDNS != expectedPublicDNS {
 			return fmt.Errorf("expected public_dns value (%s), received: %s", expectedPublicDNS, publicDNS)
@@ -729,13 +726,13 @@ func testAccCheckAWSEIPPublicDNSEc2Classic(resourceName string) resource.TestChe
 			return fmt.Errorf("Not found: %s", resourceName)
 		}
 
-		publicIPDashed := strings.Replace(rs.Primary.Attributes["public_ip"], ".", "-", -1)
 		publicDNS := rs.Primary.Attributes["public_dns"]
-		expectedPublicDNS := fmt.Sprintf("ec2-%s.%s.compute.%s", publicIPDashed, testAccGetEc2ClassicRegion(), testAccGetPartitionDNSSuffix())
-
-		if testAccGetEc2ClassicRegion() == endpoints.UsEast1RegionID {
-			expectedPublicDNS = fmt.Sprintf("ec2-%s.compute-1.%s", publicIPDashed, testAccGetPartitionDNSSuffix())
-		}
+		expectedPublicDNS := fmt.Sprintf(
+			"ec2-%s.%s.%s",
+			resourceAwsEc2DashIP(rs.Primary.Attributes["public_ip"]),
+			resourceAwsEc2RegionalPublicDnsSuffix(testAccGetEc2ClassicRegion()),
+			testAccGetPartitionDNSSuffix(),
+		)
 
 		if publicDNS != expectedPublicDNS {
 			return fmt.Errorf("expected public_dns value (%s), received: %s", expectedPublicDNS, publicDNS)
